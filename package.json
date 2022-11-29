@@ -4,7 +4,8 @@
   "scripts": {
     "build": "remix build",
     "dev": "remix dev",
-    "start": "remix-serve build"
+    "start": "remix-serve build",
+    "test": "vitest"
   },
   "dependencies": {
     "@remix-run/node": "^1.7.6",
@@ -17,15 +18,23 @@
   "devDependencies": {
     "@remix-run/dev": "^1.7.6",
     "@remix-run/eslint-config": "^1.7.6",
+    "@testing-library/dom": "^8.19.0",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^14.4.3",
     "@types/react": "^18.0.25",
     "@types/react-dom": "^18.0.8",
+    "@vitejs/plugin-react": "^2.2.0",
     "eslint": "^8.27.0",
     "eslint-config-prettier": "^8.5.0",
+    "happy-dom": "^7.7.0",
+    "msw": "^0.49.1",
     "npm-run-all": "^4.1.5",
     "prettier": "^2.8.0",
     "prettier-plugin-tailwindcss": "^0.2.0",
     "tailwindcss": "^3.2.4",
-    "typescript": "^4.8.4"
+    "typescript": "^4.8.4",
+    "vitest": "^0.25.3"
   },
   "engines": {
     "node": ">=14"
