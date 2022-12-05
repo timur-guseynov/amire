@@ -9,3 +9,8 @@ export interface PosifloraPayloadData<
 export interface PosifloraPayload<Data extends PosifloraPayloadData> {
   data: Data;
 }
+
+export interface IPosifloraUserCredentials {
+  username: string;
+  password: string;
+}

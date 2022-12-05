@@ -1,42 +1,50 @@
-import { Token } from "~/posiflora/session/posiflora-session.token";
-import { refreshSession } from "~/posiflora/session/posiflora-refresh-session.api";
-import { createSession } from "~/posiflora/session/posiflora-create-session.api";
+import { Token } from "~/posiflora/session/posiflora-session-token";
 
-import type { PosifloraSessionResponse } from "~/posiflora/session/posiflora-session.response";
+import type { IPosifloraSessionStorage } from "~/posiflora/session/posiflora-session-storage";
+import type { IPosifloraSessionRepository } from "~/posiflora/session/posiflora-session-repository";
+import type { IPosifloraSessionResponse } from "~/posiflora/session/posiflora-session-response";
 
-let accessToken: Token;
-let refreshToken: Token;
-
-async function getToken(): Promise<Token> {
-  if (accessToken && !accessToken.hasExpired()) {
-    return Promise.resolve(accessToken);
-  }
-
-  const session = await createOrRefreshSession();
-  cacheTokensFrom(session);
-
-  return accessToken;
+export interface IPosifloraSession {
+  getAccessToken(): Promise<string>;
 }
 
-function createOrRefreshSession(): Promise<PosifloraSessionResponse> {
-  if (refreshToken && !refreshToken.hasExpired()) {
-    return refreshSession(refreshToken.token);
+export class PosifloraSession implements IPosifloraSession {
+  constructor(
+    private repository: IPosifloraSessionRepository,
+    private storage: IPosifloraSessionStorage
+  ) {}
+
+  async getAccessToken(): Promise<string> {
+    let accessToken = await this.storage.readAccessToken();
+    if (accessToken && !accessToken.hasExpired()) {
+      return accessToken.value;
+    }
+
+    const session = await this.createOrRefreshSession();
+    accessToken = Token.fromAccessTokenResponse(session);
+    const refreshToken = Token.fromRefreshTokenResponse(session);
+
+    await this.cacheTokens(accessToken, refreshToken);
+
+    return accessToken!.value;
   }
 
-  return createSession({
-    username: process.env.POSIFLORA_USERNAME,
-    password: process.env.POSIFLORA_PASSWORD,
-  });
-}
+  private async createOrRefreshSession(): Promise<IPosifloraSessionResponse> {
+    const refreshToken = await this.storage.readRefreshToken();
+    if (refreshToken && !refreshToken.hasExpired()) {
+      return this.repository.refresh(refreshToken.value);
+    }
 
-function cacheTokensFrom(session: PosifloraSessionResponse): void {
-  accessToken = Token.fromApiResponse({
-    token: session.accessToken,
-    expiresAt: session.expireAt,
-  });
+    return this.repository.create();
+  }
 
-  refreshToken = Token.fromApiResponse({
-    token: session.refreshToken,
-    expiresAt: session.refreshExpireAt,
-  });
+  private cacheTokens(
+    accessToken: Token,
+    refreshToken: Token
+  ): Promise<void[]> {
+    return Promise.all([
+      this.storage.writeAccessToken(accessToken),
+      this.storage.writeRefreshToken(refreshToken),
+    ]);
+  }
 }
