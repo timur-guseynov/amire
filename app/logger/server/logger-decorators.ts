@@ -6,38 +6,48 @@ interface LogOptions {
   level?: LogLevels;
 }
 
-export function Logger(logger: ILogger) {
+const logCallDefaultOptions: LogOptions = {
+  level: "debug",
+  output: true,
+  arguments: true,
+};
+
+interface LoggerOptions extends LogOptions {
+  logger: ILogger;
+}
+
+export function Logger({ logger, ...options }: LoggerOptions) {
   return function (target: Function) {
-    const descriptors = Object.getOwnPropertyDescriptors(target);
+    const defaultOptions = {
+      ...logCallDefaultOptions,
+      ...options,
+    };
+
+    const descriptors = Object.getOwnPropertyDescriptors(target.prototype);
     for (const [propertyName, propertyDescriptor] of Object.entries(
       descriptors
     )) {
-      if (propertyName === "constructor") {
+      if (propertyDescriptor.value.log === undefined) {
         continue;
       }
 
-      if (typeof propertyDescriptor.value !== "function") {
-        continue;
-      }
-
-      if (!propertyDescriptor.value.log) {
-        continue;
-      }
-
-      const logOptions = propertyDescriptor.value.log as LogOptions;
+      const logOptions = {
+        ...defaultOptions,
+        ...(propertyDescriptor.value.log as LogOptions),
+      };
       const originalMethod = propertyDescriptor.value;
-      propertyDescriptor.value = (...args: unknown[]) => {
+      propertyDescriptor.value = function (...args: unknown[]) {
         logger.log(logOptions.level!, `${target.name}.${propertyName} CALL`);
 
         if (logOptions.arguments && args.length) {
           logger.log(
             logOptions.level!,
             `${target.name}.${propertyName} ARGUMENTS %O`,
-            args
+            ...args
           );
         }
 
-        let output = originalMethod(...args);
+        let output = originalMethod.apply(this, args);
 
         if (logOptions.output) {
           const doOutputLog = (output: unknown) => {
@@ -46,6 +56,7 @@ export function Logger(logger: ILogger) {
               ` ${target.name}.${propertyName} OUTPUT %O`,
               output
             );
+            return output;
           };
 
           if (typeof output?.then === "function") {
@@ -57,20 +68,15 @@ export function Logger(logger: ILogger) {
 
         return output;
       };
+
+      Object.defineProperty(target.prototype, propertyName, propertyDescriptor);
     }
   };
 }
 
-const logCallDefaultOptions: LogOptions = {
-  level: "debug",
-  output: true,
-  arguments: true,
-};
-
 export function LogCall(options?: LogOptions) {
   return function (target: any, name: string, descriptor: PropertyDescriptor) {
     descriptor.value.log = {
-      ...logCallDefaultOptions,
       ...options,
     };
   };
