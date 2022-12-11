@@ -1,39 +1,26 @@
 import { pino } from "pino";
+import pretty from "pino-pretty";
 
 import type { Logger as OriginalPinoLogger } from "pino";
 import type { PrettyOptions } from "pino-pretty";
-import type ThreadStream from "thread-stream";
 import type { AdaptedLoggerInstanceFactory } from "~/logger/server/logger";
 
 export class PinoLoggerFactory
   implements AdaptedLoggerInstanceFactory<OriginalPinoLogger>
 {
   makeLogger(): OriginalPinoLogger {
-    return pino(
-      {
-        formatters: {
-          level: (label) => ({
-            label,
-          }),
-          log: (object) => ({
-            module: "amirè",
-            ...object,
-          }),
-        },
-      },
-      this.makeTransport()
-    );
+    return pino(this.makeTransport());
   }
 
-  private makeTransport(): ThreadStream {
+  private makeTransport() {
     if (process.env.NODE_ENV === "production") {
       return this.makeFileTransports();
-    } else {
-      return this.makeConsoleTransport();
     }
+
+    return this.makeConsoleTransport();
   }
 
-  private makeFileTransports(): ThreadStream {
+  private makeFileTransports() {
     return pino.transport({
       targets: [
         {
@@ -50,14 +37,13 @@ export class PinoLoggerFactory
     });
   }
 
-  private makeConsoleTransport(): ThreadStream {
-    const options: PrettyOptions = {
-      messageFormat: (log, messageKey) => `[${log.module}] ${log[messageKey]}`,
-    };
+  private makeConsoleTransport() {
+    const options: PrettyOptions = {};
 
-    return pino.transport({
-      target: "pino-pretty",
-      options,
-    });
+    if (process.env.NODE_ENV === "test") {
+      options.sync = true;
+    }
+
+    return pretty(options);
   }
 }
