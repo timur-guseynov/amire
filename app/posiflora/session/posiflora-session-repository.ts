@@ -1,6 +1,7 @@
 import type { IPosifloraFetch } from "~/posiflora/posiflora-fetch";
 import type { IPosifloraUserCredentials } from "~/posiflora/posiflora.model";
 import type { IPosifloraSessionResponse } from "~/posiflora/session/posiflora-session-response";
+import { LogCall, Logger, logger } from "~/logger/logger.server";
 
 export interface IPosifloraSessionRepository {
   create: () => Promise<IPosifloraSessionResponse>;
@@ -29,12 +30,18 @@ interface ResponseBody {
   };
 }
 
+const repositoryLogger = logger.makeChildLoggerFor(
+  "posiflora:session:repository"
+);
+
+@Logger({ logger: repositoryLogger })
 export class PosifloraSessionRepository implements IPosifloraSessionRepository {
   constructor(
     private fetch: IPosifloraFetch,
     private credentials: IPosifloraUserCredentials
   ) {}
 
+  @LogCall()
   async create(): Promise<IPosifloraSessionResponse> {
     const body: CreateSessionRequestBody = {
       data: {
@@ -42,7 +49,9 @@ export class PosifloraSessionRepository implements IPosifloraSessionRepository {
         attributes: this.credentials,
       },
     };
+    repositoryLogger.debug("request body %O", body);
 
+    repositoryLogger.info("sending POST /sessions request...");
     const response = await this.fetch.do<ResponseBody>("/sessions", {
       method: "post",
       body,
@@ -50,6 +59,7 @@ export class PosifloraSessionRepository implements IPosifloraSessionRepository {
     return response.data.attributes;
   }
 
+  @LogCall()
   async refresh(refreshToken: string): Promise<IPosifloraSessionResponse> {
     const body: RefreshSessionRequestBody = {
       data: {
@@ -59,7 +69,9 @@ export class PosifloraSessionRepository implements IPosifloraSessionRepository {
         },
       },
     };
+    repositoryLogger.debug("request body %O", body);
 
+    repositoryLogger.info("sending PATCH /sessions request...");
     const response = await this.fetch.do<ResponseBody>("/sessions", {
       method: "patch",
       body,

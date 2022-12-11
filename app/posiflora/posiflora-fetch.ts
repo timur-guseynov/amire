@@ -70,7 +70,7 @@ export class PosifloraApiError extends Error {
 export class PosifloraFetch implements IPosifloraFetch {
   private middlewares: PosifloraFetchRequestTransformer[] = [];
 
-  private baseUrl: string;
+  private readonly baseUrl: string;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl + "api/v1";
