@@ -1,19 +1,14 @@
-interface IPosifloraFetchOptions {
+interface IPosifloraPagingOptions {
+  number?: number;
+  size?: number;
+}
+
+interface IPosifloraFetchOptions<Filter = Object> {
   method: "get" | "post" | "put" | "patch";
   body?: unknown;
   contentType?: string;
-}
-
-export interface PosifloraFetchRequestTransformer {
-  (req: RequestInit): void;
-}
-
-export interface IPosifloraFetch {
-  do<ResponseBody>(
-    path: string,
-    options?: IPosifloraFetchOptions
-  ): Promise<ResponseBody>;
-  use(...middlewares: PosifloraFetchRequestTransformer[]): this;
+  filter?: Filter;
+  paging?: IPosifloraPagingOptions;
 }
 
 interface PosifloraApiErrorResponse {
@@ -85,10 +80,12 @@ export class PosifloraFetch implements IPosifloraFetch {
     path: string,
     options?: IPosifloraFetchOptions
   ): Promise<ResponseBody> {
-    const urlPath = this.baseUrl + path;
+    const urlPath =
+      this.baseUrl + path + PosifloraFetch.prepareQueryParams(options);
 
-    const resultingOptions = this.runMiddlewares(
-      PosifloraFetch.prepareOptions(options)
+    const resultingOptions = await this.runMiddlewares(
+      PosifloraFetch.prepareOptions(options),
+      urlPath
     );
 
     let response;
@@ -115,8 +112,14 @@ export class PosifloraFetch implements IPosifloraFetch {
     return responseBody as ResponseBody;
   }
 
-  private runMiddlewares(req: RequestInit): RequestInit {
-    this.middlewares.forEach((fn) => fn(req));
+  private async runMiddlewares(
+    req: RequestInit,
+    urlPath: string
+  ): Promise<RequestInit> {
+    for (const middleware of this.middlewares) {
+      await middleware(req, urlPath);
+    }
+
     return req;
   }
 
@@ -133,5 +136,34 @@ export class PosifloraFetch implements IPosifloraFetch {
     }
 
     return resultingOptions;
+  }
+
+  private static prepareQueryParams(options?: IPosifloraFetchOptions): string {
+    if (!options) {
+      return "";
+    }
+
+    const transformableOptions = {
+      filter: options.filter,
+      paging: options.paging,
+    };
+
+    const queryParams = Object.entries(transformableOptions)
+      .filter(([, params]) => Boolean(params))
+      .map(([paramName, params]) =>
+        PosifloraFetch.prepareQueryParamsFromObject(paramName, params!)
+      )
+      .join("&");
+
+    return queryParams ? `?${queryParams}` : "";
+  }
+
+  private static prepareQueryParamsFromObject(
+    paramName: string,
+    obj: Object
+  ): string {
+    return Object.entries(obj)
+      .map(([key, value]) => `${paramName}[${key}]=${value}`)
+      .join("&");
   }
 }
