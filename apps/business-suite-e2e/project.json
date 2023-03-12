@@ -1,0 +1,52 @@
+{
+  "name": "business-suite-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/business-suite-e2e/src",
+  "targets": {
+    "e2e": {
+      "executor": "@nxkit/playwright:test",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/business-suite-e2e/test-results",
+        "playwrightConfig": "apps/business-suite-e2e/playwright.config.ts",
+        "devServerTarget": "business-suite:serve"
+      },
+      "configurations": {
+        "production": {
+          "devServerTarget": "business-suite:serve:production"
+        }
+      }
+    },
+    "debug": {
+      "executor": "@nxkit/playwright:test",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/business-suite-e2e/test-results",
+        "playwrightConfig": "apps/business-suite-e2e/playwright.config.ts",
+        "devServerTarget": "business-suite:serve",
+        "debug": true
+      },
+      "configurations": {
+        "production": {
+          "devServerTarget": "business-suite:serve:production"
+        }
+      }
+    },
+    "show-report": {
+      "executor": "@nxkit/playwright:show-report",
+      "options": {
+        "reportPath": "dist/apps/business-suite-e2e/playwright-report"
+      }
+    },
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/business-suite-e2e/**/*.{js,ts}"]
+      }
+    }
+  },
+  "tags": [],
+  "implicitDependencies": ["business-suite"]
+}
